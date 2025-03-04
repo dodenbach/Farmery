@@ -8,6 +8,15 @@ export default function Navbar() {
   const { user } = useAuth()
   const pathname = usePathname()
 
+  const handleSignOut = async () => {
+    try {
+      // Use window.location to force a full page reload
+      window.location.href = '/api/auth/signout'
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
   return (
     <nav className="bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,12 +75,12 @@ export default function Navbar() {
                 >
                   Cart
                 </Link>
-                <Link 
-                  href="/api/auth/signout"
+                <button 
+                  onClick={handleSignOut}
                   className="ml-8 text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
                 >
                   Sign Out
-                </Link>
+                </button>
               </>
             ) : (
               <Link 
