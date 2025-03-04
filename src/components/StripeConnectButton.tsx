@@ -1,23 +1,36 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function StripeConnectButton() {
   const [loading, setLoading] = useState(false)
   const supabase = createClientComponentClient()
 
+  // Add this useEffect to check session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('Initial session check:', session)
+    }
+    checkSession()
+  }, [])
+
   const handleConnect = async () => {
     try {
       setLoading(true)
+      console.log('Button clicked, checking session...')
       
       // Get current session
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('Session data:', session)
+
       if (!session) {
+        console.log('No session found')
         throw new Error('Please log in first')
       }
 
-      // Call our API to start Stripe Connect flow
+      console.log('Making API request...')
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
         headers: {
@@ -26,11 +39,16 @@ export default function StripeConnectButton() {
         credentials: 'include'
       })
       
+      console.log('API response status:', response.status)
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to connect')
+      console.log('API response data:', data)
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to connect')
+      }
       
-      // Redirect to Stripe's hosted onboarding
       if (data.url) {
+        console.log('Redirecting to:', data.url)
         window.location.href = data.url
       }
     } catch (error) {
