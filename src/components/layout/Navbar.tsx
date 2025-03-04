@@ -1,62 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/contexts/CartContext'
 
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading, signOut } = useAuth()
   const { items } = useCart()
-  const router = useRouter()
-  const supabase = createClientComponentClient()
-  
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-
-  useEffect(() => {
-    // Check initial auth state
-    const checkUser = async () => {
-      try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        setUser(currentUser)
-      } catch (error) {
-        console.error('Auth check error:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event)
-      setUser(session?.user || null)
-      
-      if (event === 'SIGNED_IN') {
-        router.refresh()
-      } else if (event === 'SIGNED_OUT') {
-        router.push('/')
-        router.refresh()
-      }
-    })
-
-    checkUser()
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [supabase, router])
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      router.push('/')
-    } catch (error) {
-      console.error('Sign out error:', error)
-    }
-  }
 
   if (loading) {
     return <nav className="bg-white shadow">
@@ -112,7 +63,7 @@ export default function Navbar() {
                   )}
                 </Link>
                 <button
-                  onClick={handleSignOut}
+                  onClick={signOut}
                   className="ml-4 text-gray-700 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Sign Out
