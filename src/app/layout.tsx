@@ -1,15 +1,9 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-import Navbar from '@/components/layout/Navbar'
-import { CartProvider } from '@/contexts/CartContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'Farmery - Local Farm Marketplace',
-  description: 'Connect directly with local farmers',
+export const metadata = {
+  title: 'Farmery',
+  description: 'Local farm to table marketplace',
 }
 
 export default function RootLayout({
@@ -19,14 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body>
         <AuthProvider>
-          <CartProvider>
-            <Navbar />
-            <main className="min-h-screen bg-gray-50">
-              {children}
-            </main>
-          </CartProvider>
+          {children}
         </AuthProvider>
       </body>
     </html>
