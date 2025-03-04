@@ -1,44 +1,60 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function StripeConnectButton() {
   const [loading, setLoading] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    checkAuth()
+  }, [])
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    setIsAuthenticated(!!user)
+  }
 
   const handleConnect = async () => {
     try {
       setLoading(true)
       
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      if (!isAuthenticated) {
         throw new Error('Please log in first')
       }
 
-      // Call our API to start Stripe Connect flow
+      // Use relative URL and include credentials
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        credentials: 'same-origin'
       })
       
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to connect')
-      
-      // Redirect to Stripe's hosted onboarding
-      if (data.url) {
-        window.location.href = data.url
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to connect')
       }
-    } catch (error) {
+
+      const { url } = await response.json()
+      if (url) {
+        window.location.href = url
+      } else {
+        throw new Error('No redirect URL received')
+      }
+    } catch (error: any) {
       console.error('Connect error:', error)
       alert(error.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!isAuthenticated) {
+    return <div>Please log in to connect your Stripe account</div>
   }
 
   return (
