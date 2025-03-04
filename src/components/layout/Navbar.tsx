@@ -1,26 +1,26 @@
 'use client'
 
 import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import { useCart } from '@/contexts/CartContext'
 
 export default function Navbar() {
-  const { user, loading, signOut } = useAuth()
+  const [user, setUser] = useState<any>(null)
   const { items } = useCart()
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
-  if (loading) {
-    return <nav className="bg-white shadow">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center text-green-600 text-xl font-bold">
-              Farmery
-            </div>
-          </div>
-        </div>
-      </div>
-    </nav>
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
   }
 
   return (
@@ -63,7 +63,7 @@ export default function Navbar() {
                   )}
                 </Link>
                 <button
-                  onClick={signOut}
+                  onClick={handleSignOut}
                   className="ml-4 text-gray-700 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Sign Out
