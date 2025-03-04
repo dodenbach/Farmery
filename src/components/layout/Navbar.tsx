@@ -1,89 +1,85 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useCart } from '@/contexts/CartContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePathname } from 'next/navigation'
 
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null)
-  const { items } = useCart()
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
-    getUser()
-  }, [])
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-  }
+  const { user } = useAuth()
+  const pathname = usePathname()
 
   return (
     <nav className="bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
-            <Link 
-              href="/"
-              className="flex-shrink-0 flex items-center text-green-600 text-xl font-bold"
-            >
-              Farmery
-            </Link>
-          </div>
-
-          <div className="flex items-center">
-            {user ? (
-              <>
-                <Link
-                  href="/products"
-                  className="text-gray-700 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Products
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="text-gray-700 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium"
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="text-green-600 text-xl font-bold">
+                Farmery
+              </Link>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <Link 
+                href="/" 
+                className={`${
+                  pathname === '/' 
+                    ? 'border-green-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
+                Home
+              </Link>
+              <Link 
+                href="/products" 
+                className={`${
+                  pathname === '/products'
+                    ? 'border-green-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
+                Products
+              </Link>
+              {user && (
+                <Link 
+                  href="/dashboard/farmer" 
+                  className={`${
+                    pathname === '/dashboard/farmer'
+                      ? 'border-green-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
                 >
                   Dashboard
                 </Link>
-                <Link
-                  href="/cart"
-                  className="text-gray-700 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium relative"
+              )}
+            </div>
+          </div>
+          <div className="flex items-center">
+            {user ? (
+              <>
+                <Link 
+                  href="/cart" 
+                  className={`${
+                    pathname === '/cart'
+                      ? 'border-green-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
                 >
                   Cart
-                  {itemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {itemCount}
-                    </span>
-                  )}
                 </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="ml-4 text-gray-700 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium"
+                <Link 
+                  href="/api/auth/signout"
+                  className="ml-8 text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
                 >
                   Sign Out
-                </button>
+                </Link>
               </>
             ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-gray-700 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="ml-4 bg-green-600 text-white hover:bg-green-700 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Sign Up
-                </Link>
-              </>
+              <Link 
+                href="/login"
+                className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+              >
+                Sign In
+              </Link>
             )}
           </div>
         </div>
