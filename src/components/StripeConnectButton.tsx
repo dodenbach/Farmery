@@ -10,8 +10,14 @@ export default function StripeConnectButton() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      setUser(currentUser)
+      try {
+        console.log('StripeConnectButton: Checking auth state...')
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        console.log('StripeConnectButton: Auth response:', currentUser)
+        setUser(currentUser)
+      } catch (error) {
+        console.error('StripeConnectButton: Auth check error:', error)
+      }
     }
     getUser()
   }, [])
@@ -19,24 +25,30 @@ export default function StripeConnectButton() {
   const handleConnect = async () => {
     try {
       setLoading(true)
+      console.log('StripeConnectButton: Starting connect flow...')
       
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
       })
       
       const data = await response.json()
+      console.log('StripeConnectButton: Connect response:', data)
+
       if (!response.ok) throw new Error(data.error || 'Failed to connect')
       
       if (data.url) {
         window.location.href = data.url
       }
     } catch (error) {
-      console.error('Connect error:', error)
+      console.error('StripeConnectButton: Connect error:', error)
       alert(error.message)
     } finally {
       setLoading(false)
     }
   }
+
+  // Debug render
+  console.log('StripeConnectButton: Rendering with user:', user)
 
   if (!user) {
     return <div>Please log in to connect your Stripe account</div>
