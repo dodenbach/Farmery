@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import StripeConnectButton from '@/components/StripeConnectButton'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Product {
   id: string
@@ -23,27 +24,24 @@ function DashboardContent() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Dashboard: Fetching user data...')
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        console.log('Dashboard: Current user:', currentUser)
+        console.log('Dashboard: Current user from context:', user)
         
-        if (!currentUser) {
+        if (!user) {
+          console.log('Dashboard: No user found in context')
           setError('Not authenticated')
           return
         }
 
-        setUser(currentUser)
-
         // Fetch profile and products in parallel
         const [profileResult, productsResult] = await Promise.all([
-          supabase.from('profiles').select('stripe_account_id').eq('id', currentUser.id).single(),
-          supabase.from('products').select('*').eq('farmer_id', currentUser.id)
+          supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single(),
+          supabase.from('products').select('*').eq('farmer_id', user.id)
         ])
 
         console.log('Dashboard: Profile result:', profileResult)
@@ -69,8 +67,10 @@ function DashboardContent() {
       }
     }
 
-    fetchData()
-  }, [searchParams, supabase])
+    if (user) {
+      fetchData()
+    }
+  }, [searchParams, supabase, user])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
