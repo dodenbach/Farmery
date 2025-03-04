@@ -1,31 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function StripeConnectButton() {
   const [loading, setLoading] = useState(false)
-  const [user, setUser] = useState(null)
-  const supabase = createClientComponentClient()
-
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        console.log('StripeConnectButton: Checking auth state...')
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        console.log('StripeConnectButton: Auth response:', currentUser)
-        setUser(currentUser)
-      } catch (error) {
-        console.error('StripeConnectButton: Auth check error:', error)
-      }
-    }
-    getUser()
-  }, [])
+  const { user } = useAuth()
 
   const handleConnect = async () => {
     try {
       setLoading(true)
-      console.log('StripeConnectButton: Starting connect flow...')
+      console.log('StripeConnectButton: Starting connect flow with user:', user)
       
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
