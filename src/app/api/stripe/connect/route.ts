@@ -2,29 +2,35 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
+import { headers } from 'next/headers'
 
 export async function POST(req: Request) {
   const cookieStore = cookies()
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
   
   try {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
-
-    if (sessionError || !session) {
-      console.error('Session error:', sessionError)
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    // Get the authorization header
+    const headersList = headers()
+    const authorization = headersList.get('authorization')
+    
+    if (!authorization) {
+      throw new Error('No authorization header')
     }
 
-    console.log('Creating Stripe account for:', session.user.email)
+    // Verify the session
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authorization.replace('Bearer ', '')
+    )
+
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      throw new Error('Not authenticated')
+    }
+
+    console.log('Creating Stripe account for:', user.email)
     const account = await stripe.accounts.create({
       type: 'standard',
-      email: session.user.email,
+      email: user.email,
       capabilities: {
         card_payments: {requested: true},
         transfers: {requested: true}
