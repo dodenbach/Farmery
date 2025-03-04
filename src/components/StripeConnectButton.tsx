@@ -2,58 +2,76 @@
 
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
 
 export default function StripeConnectButton() {
   const [loading, setLoading] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [user, setUser] = useState(null)
   const supabase = createClientComponentClient()
+  const router = useRouter()
 
   useEffect(() => {
-    checkAuth()
-  }, [])
+    const checkAuth = async () => {
+      try {
+        const { data: { user: currentUser }, error } = await supabase.auth.getUser()
+        if (error) throw error
+        setUser(currentUser)
+      } catch (error) {
+        console.error('Auth check error:', error)
+      } finally {
+        setAuthChecked(true)
+      }
+    }
 
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    setIsAuthenticated(!!user)
-  }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user)
+      setUser(session?.user || null)
+      router.refresh() // Refresh the page to update header
+    })
+
+    checkAuth()
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase, router])
 
   const handleConnect = async () => {
     try {
       setLoading(true)
       
-      if (!isAuthenticated) {
-        throw new Error('Please log in first')
-      }
-
-      // Use relative URL and include credentials
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         credentials: 'same-origin'
       })
       
+      const data = await response.json()
+      
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || 'Failed to connect')
       }
-
-      const { url } = await response.json()
-      if (url) {
-        window.location.href = url
-      } else {
-        throw new Error('No redirect URL received')
+      
+      if (data.url) {
+        window.location.href = data.url
       }
     } catch (error: any) {
       console.error('Connect error:', error)
-      alert(error.message)
+      alert(error.message || 'Failed to connect to Stripe')
     } finally {
       setLoading(false)
     }
   }
 
-  if (!isAuthenticated) {
+  // Show loading state while checking auth
+  if (!authChecked) {
+    return <div>Loading...</div>
+  }
+
+  // Show button only if user is authenticated
+  if (!user) {
     return <div>Please log in to connect your Stripe account</div>
   }
 
