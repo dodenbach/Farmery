@@ -3,59 +3,60 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 
-export const dynamic = 'force-dynamic'
-
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    // Get the user from Supabase auth
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await supabase.auth.getUser()
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (!user) {
+      console.log('No authenticated user found')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user already has a Stripe account
-    const { data: farmer } = await supabase
-      .from('farmers')
-      .select('stripe_account_id')
-      .eq('user_id', session.user.id)
-      .single()
+    console.log('Creating Stripe Connect account for user:', user.id)
 
-    let accountId = farmer?.stripe_account_id
-
-    if (!accountId) {
-      // Create a new Stripe Connect account
-      const account = await stripe.accounts.create({
-        type: 'standard',
-        email: session.user.email,
-      })
-      accountId = account.id
-
-      // Store the Stripe account ID
-      await supabase
-        .from('farmers')
-        .upsert({
-          user_id: session.user.id,
-          stripe_account_id: accountId,
-          email: session.user.email
-        })
-    }
-
-    // Create account link for onboarding
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: `${process.env.NEXT_PUBLIC_URL}/dashboard/farmer?error=stripe_failed`,
-      return_url: `${process.env.NEXT_PUBLIC_URL}/dashboard/farmer?success=stripe_connected`,
-      type: 'account_onboarding'
+    // Create a new Stripe Connect account
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'US',
+      email: user.email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      business_type: 'individual',
+      metadata: {
+        userId: user.id
+      }
     })
+
+    console.log('Stripe account created:', account.id)
+
+    // Save the account ID to the user's profile
+    await supabase
+      .from('profiles')
+      .update({ stripe_account_id: account.id })
+      .eq('id', user.id)
+
+    // Create an account link for onboarding
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/farmer?error=stripe_failed`,
+      return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/farmer?success=stripe_connected`,
+      type: 'account_onboarding',
+    })
+
+    console.log('Account link created:', accountLink.url)
 
     return NextResponse.json({ url: accountLink.url })
   } catch (error) {
     console.error('Stripe connect error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create connect account' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
