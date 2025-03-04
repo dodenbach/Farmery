@@ -1,20 +1,26 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+
+// Create a single instance outside the component
+const supabase = createClientComponentClient()
 
 export default function StripeConnectButton() {
   const [loading, setLoading] = useState(false)
-  const supabase = createClientComponentClient()
+  const router = useRouter()
 
   const handleConnect = async () => {
     try {
       setLoading(true)
       
-      // First verify we have a session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session) {
-        throw new Error('Please log in first')
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/login') // Redirect to login if no session
+        return
       }
 
       const response = await fetch('/api/stripe/connect', {
@@ -38,7 +44,7 @@ export default function StripeConnectButton() {
       }
     } catch (error) {
       console.error('Connect error:', error)
-      alert(error.message || 'Failed to connect to Stripe. Please try again.')
+      alert('Failed to connect to Stripe. Please try again.')
     } finally {
       setLoading(false)
     }
