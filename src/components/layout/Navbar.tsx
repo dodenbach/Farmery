@@ -2,25 +2,74 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
 import { useCart } from '@/contexts/CartContext'
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const { items } = useCart()
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+  
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+    // Check initial auth state
+    const checkUser = async () => {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        setUser(currentUser)
+      } catch (error) {
+        console.error('Auth check error:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-    getUser()
-  }, [])
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event)
+      setUser(session?.user || null)
+      
+      if (event === 'SIGNED_IN') {
+        router.refresh()
+      } else if (event === 'SIGNED_OUT') {
+        router.push('/')
+        router.refresh()
+      }
+    })
+
+    checkUser()
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase, router])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
+    try {
+      await supabase.auth.signOut()
+      router.push('/')
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
+  }
+
+  if (loading) {
+    return <nav className="bg-white shadow">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center text-green-600 text-xl font-bold">
+              Farmery
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
   }
 
   return (
