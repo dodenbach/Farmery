@@ -7,30 +7,34 @@ export default function StripeConnectButton() {
 
   const handleConnect = async () => {
     try {
+      console.log('Starting Stripe Connect process...')
       setLoading(true)
+      
+      console.log('Making API request...')
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include'  // Important for auth
+        credentials: 'include'
       })
       
+      console.log('API Response status:', response.status)
+      const data = await response.json()
+      console.log('API Response data:', data)
+
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to connect')
+        throw new Error(data.error || 'Failed to connect')
       }
       
-      const data = await response.json()
-      
-      // Redirect to Stripe Connect onboarding
       if (data.url) {
+        console.log('Redirecting to:', data.url)
         window.location.href = data.url
       } else {
         throw new Error('No redirect URL received')
       }
     } catch (error) {
-      console.error('Failed to start connect:', error)
+      console.error('Connect error details:', error)
       alert('Failed to connect to Stripe. Please try again.')
     } finally {
       setLoading(false)
