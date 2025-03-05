@@ -6,29 +6,28 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    console.log('Connect route started')
-    console.log('STRIPE_CONNECT_CLIENT_ID exists:', !!process.env.STRIPE_CONNECT_CLIENT_ID)
-
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('Auth result:', { userId: user?.id, error: authError })
-    
-    if (authError || !user) {
-      console.error('Auth error:', authError)
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore 
+    })
+
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      console.log('No session found')
+      return NextResponse.json({ error: 'Please log in again' }, { status: 401 })
+    }
+
+    if (!process.env.STRIPE_CONNECT_CLIENT_ID) {
+      console.error('Missing Stripe Connect client ID')
+      return NextResponse.json({ error: 'Configuration error' }, { status: 500 })
     }
 
     const connectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.STRIPE_CONNECT_CLIENT_ID}&scope=read_write`
-    console.log('Generated URL:', connectUrl)
 
     return NextResponse.json({ url: connectUrl })
   } catch (error) {
     console.error('Connect error:', error)
-    return NextResponse.json(
-      { error: 'Failed to generate connect URL' }, 
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to connect' }, { status: 500 })
   }
 }
