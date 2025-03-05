@@ -10,16 +10,17 @@ export default function StripeConnectButton() {
   const handleConnect = async () => {
     try {
       setLoading(true)
+      console.log('Starting Stripe connect flow...')
       
       const response = await fetch('/api/stripe/connect', {
         method: 'POST',
-        credentials: 'same-origin',  // Add this line
         headers: {
-          'Content-Type': 'application/json',
-        },
+          'Content-Type': 'application/json'
+        }
       })
       
       const data = await response.json()
+      console.log('Connect response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to connect')
