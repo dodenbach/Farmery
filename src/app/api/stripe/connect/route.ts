@@ -6,12 +6,21 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log('No auth token provided')
+      return NextResponse.json({ error: 'No auth token' }, { status: 401 })
+    }
+
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ 
       cookies: () => cookieStore 
     })
 
+    // Get session
     const { data: { session } } = await supabase.auth.getSession()
+    console.log('Session check:', { hasSession: !!session })
 
     if (!session) {
       console.log('No session found')
