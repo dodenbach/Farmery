@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function ProductForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
   const supabase = createClientComponentClient()
   
   const [product, setProduct] = useState({
@@ -23,6 +25,50 @@ export default function ProductForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setProduct(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      return
+    }
+
+    try {
+      setUploadingImage(true)
+      
+      const file = e.target.files[0]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+      const filePath = `product-images/${fileName}`
+      
+      // Upload image to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file)
+        
+      if (uploadError) throw uploadError
+      
+      // Get public URL
+      const { data } = supabase.storage.from('products').getPublicUrl(filePath)
+      
+      // Add image URL to product
+      setProduct(prev => ({
+        ...prev,
+        images: [...prev.images, data.publicUrl]
+      }))
+      
+    } catch (error: any) {
+      console.error('Error uploading image:', error)
+      setError('Failed to upload image. Please try again.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const removeImage = (index: number) => {
+    setProduct(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -190,7 +236,52 @@ export default function ProductForm() {
         </div>
       </div>
       
-      {/* Image upload will be added later */}
+      {/* Image upload section */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Product Images
+        </label>
+        <div className="mt-1 flex items-center">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            disabled={uploadingImage}
+            className="sr-only"
+            id="image-upload"
+          />
+          <label
+            htmlFor="image-upload"
+            className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            {uploadingImage ? 'Uploading...' : 'Upload Image'}
+          </label>
+        </div>
+        
+        {/* Preview uploaded images */}
+        {product.images.length > 0 && (
+          <div className="mt-4 grid grid-cols-3 gap-4">
+            {product.images.map((image, index) => (
+              <div key={index} className="relative">
+                <img
+                  src={image}
+                  alt={`Product image ${index + 1}`}
+                  className="h-24 w-24 object-cover rounded-md"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       
       <div className="flex justify-end">
         <button
